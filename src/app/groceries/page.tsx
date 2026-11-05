@@ -30,23 +30,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 
-type Unit = "Grams" | "Kilograms" | "Liters" | "Milliliters"
-
-type GroceryItem = {
-  id: number
-  item: string
-  amount: string
-  lastOrdered: string
-  checked: boolean
-}
-
-type SavedList = {
-  id: string
-  name: string
-  items: GroceryItem[]
-  createdAt: string
-  updatedAt: string
-}
+import { Unit, GroceryItem, SavedList } from "@/types/groceries.types"
 
 export default function Page() {
   const [savedLists, setSavedLists] = useState<SavedList[]>([])
