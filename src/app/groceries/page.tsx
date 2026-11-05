@@ -120,11 +120,19 @@ export default function Page() {
     if (!isEditing) return
 
     setItems((previousItems) =>
-      previousItems.map((item) =>
-        item.id === itemId
-          ? { ...item, checked: !item.checked }
-          : item
-      )
+      previousItems.map((item) => {
+        if (item.id !== itemId) return item
+
+        const isNowChecked = !item.checked
+
+        return {
+          ...item,
+          checked: isNowChecked,
+          lastOrdered: isNowChecked
+            ? formatDate(new Date().toISOString())
+            : "Not ordered yet",
+        }
+      })
     )
   }
 
