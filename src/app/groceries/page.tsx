@@ -2,10 +2,10 @@
 "use client"
 
 import { useState } from "react"
+import { Save } from "lucide-react"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
-
 import {
   SidebarInset,
   SidebarProvider,
@@ -18,12 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-
 import {
   Dialog,
   DialogContent,
@@ -32,9 +30,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 
-import { Save } from "lucide-react"
-
-// Types
 type Unit = "Grams" | "Kilograms" | "Liters" | "Milliliters"
 
 type GroceryItem = {
@@ -53,56 +48,25 @@ type SavedList = {
   updatedAt: string
 }
 
-// Mock data
-const initialItems: GroceryItem[] = [
-  {
-    id: 1,
-    item: "Bread",
-    amount: "1",
-    lastOrdered: "Nov 01, 2026",
-    checked: true,
-  },
-  {
-    id: 2,
-    item: "Potatoes",
-    amount: "500 Grams",
-    lastOrdered: "Oct 28, 2026",
-    checked: false,
-  },
-  {
-    id: 3,
-    item: "Onions",
-    amount: "250 Grams",
-    lastOrdered: "Oct 25, 2026",
-    checked: false,
-  },
-]
-
-const units: Unit[] = [
-  "Grams",
-  "Kilograms",
-  "Liters",
-  "Milliliters",
-]
-
 export default function Page() {
-  // List state
   const [savedLists, setSavedLists] = useState<SavedList[]>([])
   const [selectedListId, setSelectedListId] = useState<string | null>(null)
-  const [items, setItems] = useState<GroceryItem[]>(initialItems)
-  const [isEditing, setIsEditing] = useState(true)
 
-  // Dialog state
+  const [items, setItems] = useState<GroceryItem[]>([])
+
+  const [isEditing, setIsEditing] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
-  // Form state
   const [itemName, setItemName] = useState("")
   const [quantity, setQuantity] = useState("")
   const [unit, setUnit] = useState<Unit>("Grams")
 
-  // Helpers
-  const formatDate = (date: Date) => {
-    return date.toLocaleString("en-GB", {
+  const selectedList = savedLists.find(
+    (list) => list.id === selectedListId
+  )
+
+  function formatDate(date: string) {
+    return new Date(date).toLocaleString("en-GB", {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -111,144 +75,144 @@ export default function Page() {
     })
   }
 
-  const selectedList = savedLists.find(
-    (list) => list.id === selectedListId
-  )
+  function resetForm() {
+    setItemName("")
+    setQuantity("")
+    setUnit("Grams")
+  }
 
-  // Create a new empty list
-  const handleNewList = () => {
+  function handleNewList() {
     setSelectedListId(null)
     setItems([])
     setIsEditing(true)
     resetForm()
   }
 
-  // Load an existing list
-  const handleSelectList = (listId: string) => {
-    const list = savedLists.find(
-      (list) => list.id === listId
-    )
+  function handleSelectList(listId: string) {
+    const list = savedLists.find((savedList) => savedList.id === listId)
 
     if (!list) return
 
-    setSelectedListId(list.id)
-    setItems([...list.items])
+    setSelectedListId(listId)
+    setItems(list.items.map((item) => ({ ...item })))
     setIsEditing(false)
     resetForm()
   }
 
-  // Save new list or update existing list
-  const handleSaveList = () => {
+  function handleSaveList() {
     if (items.length === 0) return
 
     const now = new Date().toISOString()
 
     if (selectedListId) {
-      // Update existing list
-      setSavedLists((current) =>
-        current.map((list) =>
+      setSavedLists((previousLists) =>
+        previousLists.map((list) =>
           list.id === selectedListId
             ? {
                 ...list,
-                items: [...items],
+                items: items.map((item) => ({ ...item })),
                 updatedAt: now,
               }
             : list
         )
       )
     } else {
-      // Create a new list
       const newList: SavedList = {
         id: crypto.randomUUID(),
-        name: formatDate(new Date()),
-        items: [...items],
+        name: `Grocery List - ${formatDate(now)}`,
+        items: items.map((item) => ({ ...item })),
         createdAt: now,
         updatedAt: now,
       }
 
-      setSavedLists((current) => [...current, newList])
+      setSavedLists((previousLists) => [...previousLists, newList])
       setSelectedListId(newList.id)
     }
 
     setIsEditing(false)
   }
 
-  // Toggle item checkbox
-  const toggleItem = (id: number) => {
+  function toggleItem(itemId: number) {
     if (!isEditing) return
 
-    setItems((current) =>
-      current.map((item) =>
-        item.id === id
+    setItems((previousItems) =>
+      previousItems.map((item) =>
+        item.id === itemId
           ? { ...item, checked: !item.checked }
           : item
       )
     )
   }
 
-  // Reset form
-  const resetForm = () => {
-    setItemName("")
-    setQuantity("")
-    setUnit("Grams")
-  }
-
-  // Cancel adding item
-  const handleCancel = () => {
+  function handleCancel() {
     resetForm()
     setIsDialogOpen(false)
   }
 
-  // Add new item
-  const handleSaveItem = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+  function handleSaveItem() {
+    const trimmedName = itemName.trim()
+    const parsedQuantity = Number(quantity)
+
+    if (!trimmedName || !quantity || !Number.isFinite(parsedQuantity) || parsedQuantity <= 0) {
+      return
+    }
 
     const newItem: GroceryItem = {
       id: Date.now(),
-      item: itemName.trim(),
-      amount: `${quantity} ${unit}`,
+      item: trimmedName,
+      amount: `${parsedQuantity} ${unit}`,
       lastOrdered: "Not ordered yet",
       checked: false,
     }
 
-    setItems((current) => [...current, newItem])
+    setItems((previousItems) => [...previousItems, newItem])
 
     resetForm()
     setIsDialogOpen(false)
   }
 
   return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": "calc(var(--spacing) * 72)",
-          "--header-height": "calc(var(--spacing) * 12)",
-        } as React.CSSProperties
-      }
-    >
-      <AppSidebar variant="inset" />
+    <SidebarProvider>
+      <AppSidebar />
 
       <SidebarInset>
         <SiteHeader />
 
-        <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-6 p-6">
+        <div className="flex flex-1 flex-col gap-6 p-6">
+          {/* Page heading */}
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Groceries
+            </h1>
+            <p className="text-muted-foreground">
+              Manage your grocery lists and keep track of what you need.
+            </p>
+          </div>
 
-            {/* Top toolbar */}
-            <div className="grid grid-cols-1 items-center gap-4 md:grid-cols-3">
-
-              {/* Select List */}
-              <div className="flex justify-start">
+          {/* List toolbar */}
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-3">
+              {savedLists.length > 0 && (
                 <Select
-                  value={selectedListId ?? ""}
-                  onValueChange={handleSelectList}
-                  disabled={savedLists.length === 0}
+                  value={selectedListId ?? undefined}
+                  onValueChange={(value) => {
+                    if (value === "create-new") {
+                      handleNewList()
+                    } else {
+                      handleSelectList(value)
+                    }
+                  }}
                 >
-                  <SelectTrigger className="w-[240px]">
+                  <SelectTrigger className="w-[260px]">
                     <SelectValue placeholder="Select a list" />
                   </SelectTrigger>
 
                   <SelectContent>
+                    <SelectItem value="create-new"
+                      className="font-semibold text-primary focus:bg-primary/10 focus:text-primary">
+                      + Create a new list
+                    </SelectItem>
+
                     {savedLists.map((list) => (
                       <SelectItem key={list.id} value={list.id}>
                         {list.name}
@@ -256,248 +220,158 @@ export default function Page() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              )}
 
-              {/* New List / Edit List */}
-              <div className="flex justify-start md:justify-center">
-                {selectedListId ? (
-                  <Button
-                    onClick={() => setIsEditing(true)}
-                    disabled={isEditing}
-                  >
-                    Edit List
-                  </Button>
-                ) : (
-                  <Button onClick={handleNewList}>
-                    + New List
-                  </Button>
-                )}
-              </div>
-
-              {/* Last Saved */}
-              <div className="flex justify-start md:justify-end">
-                <span className="text-sm text-muted-foreground">
-                  Last saved:{" "}
-                  {selectedList
-                    ? formatDate(new Date(selectedList.updatedAt))
-                    : "Not saved yet"}
-                </span>
-              </div>
-
+              {selectedListId && (
+                <Button
+                  onClick={() => setIsEditing(true)}
+                  disabled={isEditing}
+                >
+                  Edit List
+                </Button>
+              )}
             </div>
 
-            {/* Shopping List */}
-            <div className="rounded-xl border bg-card">
+            <div className="text-sm text-muted-foreground">
+              {selectedList
+                ? `Last saved: ${formatDate(selectedList.updatedAt)}`
+                : "New unsaved list"}
+            </div>
+          </div>
 
-              <div className="border-b p-4">
-                <h2 className="text-lg font-semibold">
-                  Shopping Items
-                </h2>
-
-                <p className="text-sm text-muted-foreground">
-                  Manage the items you need to buy.
-                </p>
-              </div>
-
-              {/* Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-
-                  <thead className="bg-muted/50">
-                    <tr className="border-b text-left">
-                      <th className="px-6 py-3 font-medium">
-                        Item
-                      </th>
-
-                      <th className="px-6 py-3 font-medium">
-                        Quantity
-                      </th>
-
-                      <th className="px-6 py-3 font-medium text-center">
-                        Got it!
-                      </th>
-
-                      <th className="px-6 py-3 font-medium">
-                        Last ordered
-                      </th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {items.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={4}
-                          className="px-6 py-10 text-center text-muted-foreground"
-                        >
-                          No items yet. Click Add item to get started.
-                        </td>
-                      </tr>
-                    ) : (
-                      items.map((item) => (
-                        <tr
-                          key={item.id}
-                          className="border-b last:border-0 hover:bg-muted/30"
-                        >
-                          <td
-                            className={`px-6 py-4 font-medium ${
-                              item.checked
-                                ? "text-muted-foreground line-through"
-                                : ""
-                            }`}
-                          >
-                            {item.item}
-                          </td>
-
-                          <td className="px-6 py-4">
-                            {item.amount}
-                          </td>
-
-                          <td className="px-6 py-4 text-center">
-                            <Checkbox
-                              checked={item.checked}
-                              disabled={!isEditing}
-                              onCheckedChange={() => toggleItem(item.id)}
-                              aria-label={`Mark ${item.item} as purchased`}
-                            />
-                          </td>
-
-                          <td className="px-6 py-4 text-muted-foreground">
-                            {item.lastOrdered}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-
-                </table>
-              </div>
-
-              {/* Add Item */}
-              <div className="border-t p-4">
-                <Button
-                  variant="outline"
-                  disabled={!isEditing}
-                  onClick={() => setIsDialogOpen(true)}
-                >
-                  + Add item
-                </Button>
-              </div>
-
-              {/* Save List */}
-              <div className="flex justify-end border-t p-4">
-                <Button
-                  onClick={handleSaveList}
-                  disabled={!isEditing || items.length === 0}
-                >
-                  <Save className="mr-2 h-4 w-4" />
-                  Save List
-                </Button>
-              </div>
-
+          {/* Grocery items */}
+          <div className="rounded-lg border">
+            <div className="grid grid-cols-[2fr_1fr_100px_1fr] gap-4 border-b bg-muted/50 px-4 py-3 text-sm font-medium">
+              <div>Item</div>
+              <div>Quantity</div>
+              <div>Got it?</div>
+              <div>Last ordered</div>
             </div>
 
-            {/* Add Item Dialog */}
-            <Dialog
-              open={isDialogOpen}
-              onOpenChange={(open) => {
-                setIsDialogOpen(open)
-                if (!open) resetForm()
-              }}
-            >
-              <DialogContent className="sm:max-w-[425px]">
-
-                <DialogHeader>
-                  <DialogTitle className="text-xl">
-                    Add item
-                  </DialogTitle>
-                </DialogHeader>
-
-                <form onSubmit={handleSaveItem}>
-
-                  <div className="flex flex-col gap-5 py-4">
-
-                    {/* Item Name */}
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="itemName">
-                        Item
-                      </Label>
-
-                      <Input
-                        id="itemName"
-                        placeholder="Enter item name"
-                        value={itemName}
-                        onChange={(e) => setItemName(e.target.value)}
-                        required
-                        autoFocus
-                      />
-                    </div>
-
-                    {/* Quantity and Units */}
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="quantity">
-                        Quantity
-                      </Label>
-
-                      <div className="flex gap-2">
-
-                        <Input
-                          id="quantity"
-                          type="number"
-                          placeholder="e.g. 1.5"
-                          min="0.01"
-                          step="any"
-                          value={quantity}
-                          onChange={(e) => setQuantity(e.target.value)}
-                          required
-                          className="flex-1"
-                        />
-
-                        <Select
-                          value={unit}
-                          onValueChange={(value) => setUnit(value as Unit)}
-                        >
-                          <SelectTrigger className="w-[145px]">
-                            <SelectValue placeholder="Units" />
-                          </SelectTrigger>
-
-                          <SelectContent>
-                            {units.map((u) => (
-                              <SelectItem key={u} value={u}>
-                                {u}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-
-                      </div>
-                    </div>
-
+            {items.length === 0 ? (
+              <div className="px-4 py-12 text-center text-sm text-muted-foreground">
+                No items in this list yet. Add your first grocery item.
+              </div>
+            ) : (
+              items.map((item) => (
+                <div
+                  key={item.id}
+                  className="grid grid-cols-[2fr_1fr_100px_1fr] items-center gap-4 border-b px-4 py-3 last:border-b-0"
+                >
+                  <div className="font-medium">{item.item}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {item.amount}
                   </div>
+                  <div>
+                    <Checkbox
+                      checked={item.checked}
+                      disabled={!isEditing}
+                      onCheckedChange={() => toggleItem(item.id)}
+                    />
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {item.lastOrdered}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
 
-                  {/* Dialog Buttons */}
-                  <DialogFooter className="gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleCancel}
-                    >
-                      Cancel
-                    </Button>
+          {/* Add item */}
+          <div>
+            <Button
+              variant="outline"
+              onClick={() => setIsDialogOpen(true)}
+              disabled={!isEditing}
+            >
+              + Add item
+            </Button>
+          </div>
 
-                    <Button type="submit">
-                      Save
-                    </Button>
-                  </DialogFooter>
-
-                </form>
-
-              </DialogContent>
-            </Dialog>
-
+          {/* Save list */}
+          <div className="flex justify-end">
+            <Button
+              onClick={handleSaveList}
+              disabled={!isEditing || items.length === 0}
+            >
+              <Save className="mr-2 h-4 w-4" />
+              Save List
+            </Button>
           </div>
         </div>
       </SidebarInset>
+
+      {/* Add item dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add grocery item</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="itemName">Item name</Label>
+              <Input
+                id="itemName"
+                placeholder="e.g. Tomatoes"
+                value={itemName}
+                onChange={(event) => setItemName(event.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="quantity">Quantity</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  min="0.01"
+                  step="any"
+                  placeholder="e.g. 500"
+                  value={quantity}
+                  onChange={(event) => setQuantity(event.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="unit">Unit</Label>
+                <Select
+                  value={unit}
+                  onValueChange={(value) => setUnit(value as Unit)}
+                >
+                  <SelectTrigger id="unit">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Grams">Grams</SelectItem>
+                    <SelectItem value="Kilograms">Kilograms</SelectItem>
+                    <SelectItem value="Liters">Liters</SelectItem>
+                    <SelectItem value="Milliliters">Milliliters</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancel}>
+              Cancel
+            </Button>
+
+            <Button
+              onClick={handleSaveItem}
+              disabled={
+                !itemName.trim() ||
+                !quantity ||
+                !Number.isFinite(Number(quantity)) ||
+                Number(quantity) <= 0
+              }
+            >
+              Add item
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   )
 }
