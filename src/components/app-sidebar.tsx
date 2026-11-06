@@ -8,7 +8,8 @@ import {
   IconFileDescription,
   IconFlower,
   IconInnerShadowTop,
-  IconListDetails,
+  IconSoup,
+  IconListCheck
 } from "@tabler/icons-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -38,17 +39,17 @@ const data = {
     {
       title: "Groceries",
       url: "/groceries",
-      icon: IconListDetails,
+      icon: IconListCheck,
     },
     {
       title: "Meals",
-      url: "#",
-      icon: IconListDetails,
+      url: "/meals",
+      icon: IconSoup,
     },
     {
       title: "Chores",
       url: "#",
-      icon: IconListDetails,
+      icon: IconListCheck,
     },
     {
       title: "Garden",
