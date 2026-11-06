@@ -40,51 +40,6 @@ const dayNames = [
 type DailyMeals = Record<MealType, string>
 type WeeklyMeals = Record<string, DailyMeals>
 
-const sampleMeals: DailyMeals[] = [
-  {
-    Breakfast: "Brunch",
-    Lunch: "BBQ",
-    Dinner: "Sandwiches",
-    Dessert: "Cheesecake",
-  },
-  {
-    Breakfast: "Toast & Jam",
-    Lunch: "Sandwiches",
-    Dinner: "Pasta",
-    Dessert: "Chocolate",
-  },
-  {
-    Breakfast: "Omelette",
-    Lunch: "Pasta",
-    Dinner: "Stroganoff",
-    Dessert: "Icecream",
-  },
-  {
-    Breakfast: "Granola",
-    Lunch: "Stroganoff",
-    Dinner: "Traybake",
-    Dessert: "Icecream",
-  },
-  {
-    Breakfast: "Toast & Jam",
-    Lunch: "Traybake",
-    Dinner: "Chicken Curry",
-    Dessert: "Chocolate",
-  },
-  {
-    Breakfast: "Omelette",
-    Lunch: "Chicken Curry",
-    Dinner: "Roast Chicken",
-    Dessert: "Icecream",
-  },
-  {
-    Breakfast: "Eggs & Bacon",
-    Lunch: "Roast Chicken",
-    Dinner: "Burgers",
-    Dessert: "Cheesecake",
-  },
-]
-
 function getDateKey(date: Date) {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, "0")
@@ -141,22 +96,6 @@ function formatDayDate(date: Date) {
   })
 }
 
-function createInitialMeals(): WeeklyMeals {
-  const meals: WeeklyMeals = {}
-  const today = new Date()
-  const weekStart = getWeekStart(today)
-
-  sampleMeals.forEach((dayMeals, index) => {
-    const date = new Date(weekStart)
-
-    date.setDate(weekStart.getDate() + index)
-
-    meals[getDateKey(date)] = { ...dayMeals }
-  })
-
-  return meals
-}
-
 export default function Page() {
   const [selectedDate, setSelectedDate] = useState(
     () => new Date()
@@ -164,9 +103,7 @@ export default function Page() {
 
   const [viewMode, setViewMode] = useState<ViewMode>("week")
 
-  const [meals, setMeals] = useState<WeeklyMeals>(
-    createInitialMeals
-  )
+  const [meals, setMeals] = useState<WeeklyMeals>({})
 
   // Tracks the currently hovered meal cell
   const [hoveredCell, setHoveredCell] = useState<{
