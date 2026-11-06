@@ -17,8 +17,7 @@ import {
   ChevronRight,
 } from "lucide-react"
 
-type MealType = "Breakfast" | "Lunch" | "Dinner" | "Dessert"
-type ViewMode = "day" | "week"
+import { MealType, ViewMode, DailyMeals, WeeklyMeals } from "@/types/meals.types"
 
 const mealTypes: MealType[] = [
   "Breakfast",
@@ -36,9 +35,6 @@ const dayNames = [
   "Friday",
   "Saturday",
 ]
-
-type DailyMeals = Record<MealType, string>
-type WeeklyMeals = Record<string, DailyMeals>
 
 function getDateKey(date: Date) {
   const year = date.getFullYear()
