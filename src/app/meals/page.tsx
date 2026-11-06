@@ -168,6 +168,12 @@ export default function Page() {
     createInitialMeals
   )
 
+  // Tracks the currently hovered meal cell
+  const [hoveredCell, setHoveredCell] = useState<{
+    dateKey: string
+    mealType: MealType
+  } | null>(null)
+
   const weekStart = getWeekStart(selectedDate)
 
   const weekDays = Array.from({ length: 7 }, (_, index) => {
@@ -332,7 +338,10 @@ export default function Page() {
                   variant={
                     viewMode === "day" ? "default" : "ghost"
                   }
-                  onClick={() => setViewMode("day")}
+                  onClick={() => {
+                    setViewMode("day")
+                    setHoveredCell(null)
+                  }}
                 >
                   Day
                 </Button>
@@ -342,7 +351,10 @@ export default function Page() {
                   variant={
                     viewMode === "week" ? "default" : "ghost"
                   }
-                  onClick={() => setViewMode("week")}
+                  onClick={() => {
+                    setViewMode("week")
+                    setHoveredCell(null)
+                  }}
                 >
                   Week
                 </Button>
@@ -353,6 +365,7 @@ export default function Page() {
             <div className="overflow-x-auto p-3">
               <div
                 className="grid min-w-[850px]"
+                onMouseLeave={() => setHoveredCell(null)}
                 style={{
                   gridTemplateColumns: `115px repeat(${visibleDays.length}, minmax(100px, 1fr))`,
                 }}
@@ -362,61 +375,95 @@ export default function Page() {
                 <div />
 
                 {/* Days of the week */}
-                {visibleDays.map((date) => (
-                  <div
-                    key={getDateKey(date)}
-                    className="border-b p-3 text-center"
-                  >
-                    <div className="font-semibold text-sm">
-                      {dayNames[date.getDay()]}
-                    </div>
+                {visibleDays.map((date) => {
+                  const dateKey = getDateKey(date)
+                  const isColumnHovered =
+                    hoveredCell?.dateKey === dateKey
 
-                    <div className="text-xs text-muted-foreground">
-                      {formatDayDate(date)}
+                  return (
+                    <div
+                      key={dateKey}
+                      className={`border-b p-3 text-center transition-colors ${
+                        isColumnHovered
+                          ? "bg-blue-100 dark:bg-blue-950/40"
+                          : ""
+                      }`}
+                    >
+                      <div className="font-semibold text-sm">
+                        {dayNames[date.getDay()]}
+                      </div>
+
+                      <div className="text-xs text-muted-foreground">
+                        {formatDayDate(date)}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
 
                 {/* Meal rows */}
-                {mealTypes.map((mealType) => (
-                  <div key={mealType} className="contents">
-                    {/* Meal type label */}
-                    <div
-                      className="flex min-h-[115px] items-center justify-center border-b border-r bg-muted px-2 text-center font-medium"
-                    >
-                      {mealType}
-                    </div>
+                {mealTypes.map((mealType) => {
+                  const isRowHovered =
+                    hoveredCell?.mealType === mealType
 
-                    {/* Editable meal cells */}
-                    {visibleDays.map((date) => {
-                      const dateKey = getDateKey(date)
-                      const meal = meals[dateKey]?.[mealType] ?? ""
+                  return (
+                    <div key={mealType} className="contents">
+                      {/* Meal type label */}
+                      <div
+                        className={`flex min-h-[115px] items-center justify-center border-b border-r px-2 text-center font-medium transition-colors ${
+                          isRowHovered
+                            ? "bg-blue-100 dark:bg-blue-950/40"
+                            : "bg-muted"
+                        }`}
+                      >
+                        {mealType}
+                      </div>
 
-                      return (
-                        <div
-                          key={`${dateKey}-${mealType}`}
-                          className={`min-h-[115px] border-b border-r p-2 ${
-                            mealType === "Lunch"
-                              ? "bg-blue-100 dark:bg-blue-950/40"
-                              : mealType === "Dessert"
-                                ? "bg-muted/60"
-                                : "bg-background"
-                          }`}
-                        >
-                          <Input
-                            value={meal}
-                            onChange={(event) =>
-                              updateMeal(date, mealType, event.target.value)
+                      {/* Editable meal cells */}
+                      {visibleDays.map((date) => {
+                        const dateKey = getDateKey(date)
+                        const meal =
+                          meals[dateKey]?.[mealType] ?? ""
+
+                        const isColumnHovered =
+                          hoveredCell?.dateKey === dateKey
+
+                        const isHighlighted =
+                          isRowHovered || isColumnHovered
+
+                        return (
+                          <div
+                            key={`${dateKey}-${mealType}`}
+                            onMouseEnter={() =>
+                              setHoveredCell({
+                                dateKey,
+                                mealType,
+                              })
                             }
-                            placeholder="Add a meal..."
-                            aria-label={`${mealType} on ${dayNames[date.getDay()]}`}
-                            className="h-full min-h-[90px] w-full border-0 bg-transparent text-center shadow-none focus-visible:ring-1 focus-visible:ring-primary"
-                          />
-                        </div>
-                      )
-                    })}
-                  </div>
-                ))}
+                            className={`min-h-[115px] border-b border-r p-2 transition-colors ${
+                              isHighlighted
+                                ? "bg-blue-100 dark:bg-blue-950/40"
+                                : "bg-background"
+                            }`}
+                          >
+                            <Input
+                              value={meal}
+                              onChange={(event) =>
+                                updateMeal(
+                                  date,
+                                  mealType,
+                                  event.target.value
+                                )
+                              }
+                              placeholder="Add a meal..."
+                              aria-label={`${mealType} on ${dayNames[date.getDay()]}`}
+                              className="h-full min-h-[90px] w-full border-0 bg-transparent text-center shadow-none focus-visible:ring-1 focus-visible:ring-primary"
+                            />
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                })}
               </div>
             </div>
 
