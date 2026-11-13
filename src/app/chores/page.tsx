@@ -31,23 +31,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 
-type Assignee = "Anyone" | "Jaz" | "Luis"
-
-type Chore = {
-  id: string
-  item: string
-  assignee: Assignee
-  done: boolean
-  lastDone: string
-}
-
-type SavedChoreList = {
-  id: string
-  name: string
-  chores: Chore[]
-  createdAt: string
-  updatedAt: string
-}
+import { Assignee, Chore, SavedChoreList } from "@/types/chores.type"
 
 export default function Page() {
   const [savedLists, setSavedLists] = useState<SavedChoreList[]>([])
