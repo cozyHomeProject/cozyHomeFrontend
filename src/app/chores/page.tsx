@@ -153,6 +153,18 @@ export default function Page() {
     )
   }
 
+  function updateAssignee(choreId: string, newAssignee: Assignee) {
+    if (!isEditing) return
+
+    setChores((previousChores) =>
+      previousChores.map((chore) =>
+        chore.id === choreId
+          ? { ...chore, assignee: newAssignee }
+          : chore
+      )
+    )
+  }
+
   function handleCancel() {
     resetForm()
     setIsDialogOpen(false)
@@ -275,8 +287,25 @@ export default function Page() {
                 >
                   <div className="font-medium">{chore.item}</div>
 
-                  <div className="text-sm text-muted-foreground">
-                    {chore.assignee}
+                  {/* Editable assignee */}
+                  <div>
+                    <Select
+                      value={chore.assignee}
+                      disabled={!isEditing}
+                      onValueChange={(value) =>
+                        updateAssignee(chore.id, value as Assignee)
+                      }
+                    >
+                      <SelectTrigger className="w-[130px]">
+                        <SelectValue />
+                      </SelectTrigger>
+
+                      <SelectContent>
+                        <SelectItem value="Anyone">Anyone</SelectItem>
+                        <SelectItem value="Jaz">Jaz</SelectItem>
+                        <SelectItem value="Luis">Luis</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div>
