@@ -48,12 +48,12 @@ export function SectionCards() {
 
         <Link
           href="/meals"
-          aria-label="View groceries list"
+          aria-label="View planned meals"
           className="absolute inset-0 rounded-xl"
         />
       </Card>
 
-      <Card className="@container/card">
+      <Card className="@container/card relative">
         <CardHeader>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
             Chores 🧹
@@ -67,6 +67,12 @@ export function SectionCards() {
             📋2 tasks to do
           </div>
         </CardFooter>
+
+        <Link
+          href="/chores"
+          aria-label="View chores list"
+          className="absolute inset-0 rounded-xl"
+        />
       </Card>
 
       <Card className="@container/card">

@@ -48,7 +48,7 @@ const data = {
     },
     {
       title: "Chores",
-      url: "#",
+      url: "/chores",
       icon: IconListCheck,
     },
     {

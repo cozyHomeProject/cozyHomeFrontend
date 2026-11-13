@@ -164,8 +164,15 @@ export default function Page() {
   }
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
+    <SidebarProvider
+      style={
+        {
+          "--sidebar-width": "calc(var(--spacing) * 72)",
+          "--header-height": "calc(var(--spacing) * 12)",
+        } as React.CSSProperties
+      }
+    >
+      <AppSidebar variant="inset" />
 
       <SidebarInset>
         <SiteHeader />
@@ -186,7 +193,7 @@ export default function Page() {
             <div className="flex flex-wrap items-center gap-3">
               {savedLists.length > 0 && (
                 <Select
-                  value={selectedListId ?? undefined}
+                  value={selectedListId ?? ""}
                   onValueChange={(value) => {
                     if (value === "create-new") {
                       handleNewList()
