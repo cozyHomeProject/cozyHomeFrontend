@@ -269,7 +269,7 @@ export default function Page() {
           {/* Chores table */}
           <div className="rounded-lg border">
             <div className="grid grid-cols-[2fr_1fr_100px_1fr] gap-4 border-b bg-muted/50 px-4 py-3 text-sm font-medium">
-              <div>Item</div>
+              <div>Chore</div>
               <div>Assignee</div>
               <div>Done</div>
               <div>Last done</div>
