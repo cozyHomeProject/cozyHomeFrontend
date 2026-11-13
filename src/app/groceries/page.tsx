@@ -193,7 +193,7 @@ export default function Page() {
             <div className="flex flex-wrap items-center gap-3">
               {savedLists.length > 0 && (
                 <Select
-                  value={selectedListId ?? undefined}
+                  value={selectedListId ?? ""}
                   onValueChange={(value) => {
                     if (value === "create-new") {
                       handleNewList()
