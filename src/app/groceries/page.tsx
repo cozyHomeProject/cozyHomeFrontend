@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Save } from "lucide-react"
 
 import { AppSidebar } from "@/components/app-sidebar"
@@ -31,6 +31,13 @@ import {
 } from "@/components/ui/dialog"
 
 import { Unit, GroceryItem, SavedList } from "@/types/groceries.types"
+import {
+  createList,
+  fetchListItems,
+  fetchLists,
+  formatDate,
+  updateList,
+} from "@/lib/groceries-api"
 
 export default function Page() {
   const [savedLists, setSavedLists] = useState<SavedList[]>([])
@@ -45,19 +52,20 @@ export default function Page() {
   const [quantity, setQuantity] = useState("")
   const [unit, setUnit] = useState<Unit>("Grams")
 
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchLists()
+      .then(setSavedLists)
+      .catch((err: Error) => setError(`Could not load the lists: ${err.message}`))
+      .finally(() => setIsLoading(false))
+  }, [])
+
   const selectedList = savedLists.find(
     (list) => list.id === selectedListId
   )
-
-  function formatDate(date: string) {
-    return new Date(date).toLocaleString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  }
 
   function resetForm() {
     setItemName("")
@@ -72,48 +80,50 @@ export default function Page() {
     resetForm()
   }
 
-  function handleSelectList(listId: string) {
+  async function handleSelectList(listId: string) {
     const list = savedLists.find((savedList) => savedList.id === listId)
 
     if (!list) return
 
     setSelectedListId(listId)
-    setItems(list.items.map((item) => ({ ...item })))
     setIsEditing(false)
     resetForm()
+    setError(null)
+
+    try {
+      const listItems = await fetchListItems(listId)
+      setItems(listItems)
+    } catch (err) {
+      setItems([])
+      setError(`Could not load the items: ${(err as Error).message}`)
+    }
   }
 
-  function handleSaveList() {
+  async function handleSaveList() {
     if (items.length === 0) return
 
-    const now = new Date().toISOString()
+    setIsSaving(true)
+    setError(null)
 
-    if (selectedListId) {
-      setSavedLists((previousLists) =>
-        previousLists.map((list) =>
-          list.id === selectedListId
-            ? {
-                ...list,
-                items: items.map((item) => ({ ...item })),
-                updatedAt: now,
-              }
-            : list
-        )
-      )
-    } else {
-      const newList: SavedList = {
-        id: crypto.randomUUID(),
-        name: `Grocery List - ${formatDate(now)}`,
-        items: items.map((item) => ({ ...item })),
-        createdAt: now,
-        updatedAt: now,
-      }
+    try {
+      const saved = selectedListId
+        ? await updateList(selectedListId, items)
+        : await createList(items)
 
-      setSavedLists((previousLists) => [...previousLists, newList])
-      setSelectedListId(newList.id)
+      setSavedLists((previousLists) => {
+        const exists = previousLists.some((list) => list.id === saved.id)
+        return exists
+          ? previousLists.map((list) => (list.id === saved.id ? saved : list))
+          : [...previousLists, saved]
+      })
+      setSelectedListId(saved.id)
+      setItems(saved.items)
+      setIsEditing(false)
+    } catch (err) {
+      setError(`Could not save the list: ${(err as Error).message}`)
+    } finally {
+      setIsSaving(false)
     }
-
-    setIsEditing(false)
   }
 
   function toggleItem(itemId: number) {
@@ -124,13 +134,13 @@ export default function Page() {
         if (item.id !== itemId) return item
 
         const isNowChecked = !item.checked
+        const now = new Date().toISOString()
 
         return {
           ...item,
           checked: isNowChecked,
-          lastOrdered: isNowChecked
-            ? formatDate(new Date().toISOString())
-            : "Not ordered yet",
+          orderedAt: isNowChecked ? now : null,
+          lastOrdered: isNowChecked ? formatDate(now) : "Not ordered yet",
         }
       })
     )
@@ -188,6 +198,12 @@ export default function Page() {
             </p>
           </div>
 
+          {error && (
+            <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
           {/* List toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3">
@@ -232,7 +248,9 @@ export default function Page() {
             </div>
 
             <div className="text-sm text-muted-foreground">
-              {selectedList
+              {isLoading
+                ? "Loading lists..."
+                : selectedList
                 ? `Last saved: ${formatDate(selectedList.updatedAt)}`
                 : "New unsaved list"}
             </div>
@@ -291,10 +309,10 @@ export default function Page() {
           <div className="flex justify-end">
             <Button
               onClick={handleSaveList}
-              disabled={!isEditing || items.length === 0}
+              disabled={!isEditing || items.length === 0 || isSaving}
             >
               <Save className="mr-2 h-4 w-4" />
-              Save List
+              {isSaving ? "Saving..." : "Save List"}
             </Button>
           </div>
         </div>
