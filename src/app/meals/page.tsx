@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
@@ -18,6 +18,9 @@ import {
 } from "lucide-react"
 
 import { MealType, ViewMode, DailyMeals, WeeklyMeals } from "@/types/meals.types"
+import { WeekPlan, fetchWeek, saveMeal } from "@/lib/meals-api"
+
+type SaveStatus = "idle" | "saving" | "saved" | "error"
 
 const mealTypes: MealType[] = [
   "Breakfast",
@@ -108,6 +111,68 @@ export default function Page() {
   } | null>(null)
 
   const weekStart = getWeekStart(selectedDate)
+  const weekStartKey = getDateKey(weekStart)
+
+  // Plan guardado en el backend para la semana visible, y lo último que se guardó de cada celda.
+  const planRef = useRef<WeekPlan>({ planId: null, meals: {}, itemIds: {} })
+  const savedRef = useRef<WeeklyMeals>({})
+  const currentWeekRef = useRef(weekStartKey)
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve())
+  const [status, setStatus] = useState<SaveStatus>("idle")
+  const [error, setError] = useState<string | null>(null)
+  // Semana cuyo plan ya llegó del backend: mientras no coincida con la visible, está cargando.
+  const [loadedWeek, setLoadedWeek] = useState<string | null>(null)
+  const isLoadingWeek = loadedWeek !== weekStartKey
+
+  useEffect(() => {
+    let cancelled = false
+    currentWeekRef.current = weekStartKey
+
+    fetchWeek(weekStartKey)
+      .then((plan) => {
+        if (cancelled) return
+        planRef.current = plan
+        savedRef.current = structuredClone(plan.meals)
+        setMeals(plan.meals)
+        setError(null)
+        setStatus("idle")
+        setLoadedWeek(weekStartKey)
+      })
+      .catch((err: Error) => {
+        if (cancelled) return
+        setError(`Could not load this week's plan: ${err.message}`)
+        setStatus("error")
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [weekStartKey])
+
+  // Guarda una celda cuando pierde el foco, si cambió. Los guardados van en fila.
+  function persistMeal(date: Date, mealType: MealType) {
+    const dateKey = getDateKey(date)
+    const value = (meals[dateKey]?.[mealType] ?? "").trim()
+    const saved = savedRef.current[dateKey]?.[mealType] ?? ""
+    if (value === saved) return
+
+    const week = weekStartKey
+    setStatus("saving")
+
+    saveQueueRef.current = saveQueueRef.current.then(async () => {
+      try {
+        const plan = await saveMeal(planRef.current, week, dateKey, mealType, value)
+        if (currentWeekRef.current !== week) return
+        planRef.current = plan
+        savedRef.current[dateKey] ??= { Breakfast: "", Lunch: "", Dinner: "", Dessert: "" }
+        savedRef.current[dateKey][mealType] = value
+        setStatus("saved")
+      } catch (err) {
+        setError(`Could not save ${mealType}: ${(err as Error).message}`)
+        setStatus("error")
+      }
+    })
+  }
 
   const weekDays = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(weekStart)
@@ -200,6 +265,12 @@ export default function Page() {
               cooking throughout the week.
             </p>
           </div>
+
+          {error && (
+            <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
 
           {/* Calendar */}
           <div className="rounded-xl border bg-card shadow-sm">
@@ -394,6 +465,11 @@ export default function Page() {
                                   event.target.value
                                 )
                               }
+                              onBlur={() => persistMeal(date, mealType)}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") event.currentTarget.blur()
+                              }}
+                              disabled={isLoadingWeek}
                               placeholder="Add a meal..."
                               aria-label={`${mealType} on ${dayNames[date.getDay()]}`}
                               className="h-full min-h-[90px] w-full border-0 bg-transparent text-center shadow-none focus-visible:ring-1 focus-visible:ring-primary"
@@ -408,9 +484,16 @@ export default function Page() {
             </div>
 
             {/* Calendar footer */}
-            <div className="border-t px-4 py-3 text-sm text-muted-foreground">
-              💡 Every square is editable. Click any cell to add
-              or update a meal in your meal plan.
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t px-4 py-3 text-sm text-muted-foreground">
+              <span>
+                💡 Every square is editable. Click any cell to add
+                or update a meal in your meal plan.
+              </span>
+              <span>
+                {isLoadingWeek && "Loading week..."}
+                {!isLoadingWeek && status === "saving" && "Saving..."}
+                {!isLoadingWeek && status === "saved" && "All changes saved"}
+              </span>
             </div>
           </div>
         </div>
