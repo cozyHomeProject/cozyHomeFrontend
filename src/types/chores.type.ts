@@ -6,6 +6,8 @@ export type Chore = {
   assignee: Assignee
   done: boolean
   lastDone: string
+  apiId?: number            // id de la tarea en el backend (si ya está guardada)
+  doneAt?: string | null    // fecha ISO en que se marcó como hecha
 }
 
 export type SavedChoreList = {

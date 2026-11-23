@@ -6,6 +6,8 @@ export type GroceryItem = {
   amount: string
   lastOrdered: string
   checked: boolean
+  apiId?: number          // id del groceryListItem en el backend (si ya está guardado)
+  orderedAt?: string | null // fecha ISO en que se marcó "Got it?"
 }
 
 export type SavedList = {

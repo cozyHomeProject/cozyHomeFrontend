@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { CSSProperties } from "react"
 import { Save } from "lucide-react"
 
@@ -32,6 +32,13 @@ import {
 } from "@/components/ui/dialog"
 
 import { Assignee, Chore, SavedChoreList } from "@/types/chores.type"
+import { formatDate } from "@/lib/api"
+import {
+  createChoreList,
+  fetchChoreLists,
+  fetchChores,
+  updateChoreList,
+} from "@/lib/chores-api"
 
 export default function Page() {
   const [savedLists, setSavedLists] = useState<SavedChoreList[]>([])
@@ -45,19 +52,20 @@ export default function Page() {
   const [choreName, setChoreName] = useState("")
   const [assignee, setAssignee] = useState<Assignee>("Anyone")
 
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchChoreLists()
+      .then(setSavedLists)
+      .catch((err: Error) => setError(`Could not load the lists: ${err.message}`))
+      .finally(() => setIsLoading(false))
+  }, [])
+
   const selectedList = savedLists.find(
     (list) => list.id === selectedListId
   )
-
-  function formatDate(date: string) {
-    return new Date(date).toLocaleString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  }
 
   function resetForm() {
     setChoreName("")
@@ -71,7 +79,7 @@ export default function Page() {
     resetForm()
   }
 
-  function handleSelectList(listId: string) {
+  async function handleSelectList(listId: string) {
     const list = savedLists.find(
       (savedList) => savedList.id === listId
     )
@@ -79,42 +87,43 @@ export default function Page() {
     if (!list) return
 
     setSelectedListId(listId)
-    setChores(list.chores.map((chore) => ({ ...chore })))
     setIsEditing(false)
     resetForm()
+    setError(null)
+
+    try {
+      setChores(await fetchChores(listId))
+    } catch (err) {
+      setChores([])
+      setError(`Could not load the chores: ${(err as Error).message}`)
+    }
   }
 
-  function handleSaveList() {
+  async function handleSaveList() {
     if (chores.length === 0) return
 
-    const now = new Date().toISOString()
+    setIsSaving(true)
+    setError(null)
 
-    if (selectedListId) {
-      setSavedLists((previousLists) =>
-        previousLists.map((list) =>
-          list.id === selectedListId
-            ? {
-                ...list,
-                chores: chores.map((chore) => ({ ...chore })),
-                updatedAt: now,
-              }
-            : list
-        )
-      )
-    } else {
-      const newList: SavedChoreList = {
-        id: crypto.randomUUID(),
-        name: `Chore List - ${formatDate(now)}`,
-        chores: chores.map((chore) => ({ ...chore })),
-        createdAt: now,
-        updatedAt: now,
-      }
+    try {
+      const saved = selectedListId
+        ? await updateChoreList(selectedListId, chores)
+        : await createChoreList(chores)
 
-      setSavedLists((previousLists) => [...previousLists, newList])
-      setSelectedListId(newList.id)
+      setSavedLists((previousLists) => {
+        const exists = previousLists.some((list) => list.id === saved.id)
+        return exists
+          ? previousLists.map((list) => (list.id === saved.id ? saved : list))
+          : [...previousLists, saved]
+      })
+      setSelectedListId(saved.id)
+      setChores(saved.chores)
+      setIsEditing(false)
+    } catch (err) {
+      setError(`Could not save the list: ${(err as Error).message}`)
+    } finally {
+      setIsSaving(false)
     }
-
-    setIsEditing(false)
   }
 
   function toggleChore(choreId: string) {
@@ -125,13 +134,13 @@ export default function Page() {
         if (chore.id !== choreId) return chore
 
         const isNowDone = !chore.done
+        const now = new Date().toISOString()
 
         return {
           ...chore,
           done: isNowDone,
-          lastDone: isNowDone
-            ? formatDate(new Date().toISOString())
-            : "Not done yet",
+          doneAt: isNowDone ? now : null,
+          lastDone: isNowDone ? formatDate(now) : "Not done yet",
         }
       })
     )
@@ -198,6 +207,12 @@ export default function Page() {
             </p>
           </div>
 
+          {error && (
+            <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
           {/* List toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3">
@@ -244,7 +259,9 @@ export default function Page() {
             </div>
 
             <div className="text-sm text-muted-foreground">
-              {selectedList
+              {isLoading
+                ? "Loading lists..."
+                : selectedList
                 ? `Last saved: ${formatDate(selectedList.updatedAt)}`
                 : "New unsaved list"}
             </div>
@@ -323,10 +340,10 @@ export default function Page() {
           <div className="flex justify-end">
             <Button
               onClick={handleSaveList}
-              disabled={!isEditing || chores.length === 0}
+              disabled={!isEditing || chores.length === 0 || isSaving}
             >
               <Save className="mr-2 h-4 w-4" />
-              Save List
+              {isSaving ? "Saving..." : "Save List"}
             </Button>
           </div>
         </div>
